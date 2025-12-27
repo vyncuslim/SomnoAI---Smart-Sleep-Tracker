@@ -6,32 +6,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SomnoAI - 智能睡眠监测</title>
     
-    <!-- 1. 优先级最高：注入模拟环境 -->
+    <!-- 1. 环境垫片：必须在任何模块加载前运行 -->
     <script>
       (function() {
+        // 彻底模拟 Node 环境，防止 React 或依赖库崩溃
         window.process = { 
-          env: { API_KEY: "" },
+          env: { 
+            API_KEY: "",
+            NODE_ENV: "production" 
+          },
           cwd: function() { return "/"; },
           nextTick: function(fn) { setTimeout(fn, 0); }
         };
         window.global = window;
         
-        // 监控脚本加载失败
+        // 增强的错误捕获：将错误信息转化为可读字符串
         window.addEventListener('error', function(e) {
-          console.error('加载异常:', e);
-          if (e.target && (e.target.src || e.target.href)) {
-            const msg = '资源加载失败: ' + (e.target.src || e.target.href);
-            const errorOverlay = document.getElementById('error-overlay');
-            if (errorOverlay) {
-              errorOverlay.style.display = 'block';
-              errorOverlay.innerText = msg;
+          console.error('Captured Error:', e);
+          const errorOverlay = document.getElementById('error-overlay');
+          if (errorOverlay) {
+            errorOverlay.style.display = 'block';
+            // 区分资源加载错误（如 Script 404）和 JS 运行时错误
+            if (e.target && (e.target.src || e.target.href)) {
+              errorOverlay.innerText = '资源加载失败: ' + (e.target.src || e.target.href);
+            } else {
+              errorOverlay.innerText = '运行时错误: ' + (e.message || '查看控制台详情');
             }
           }
         }, true);
       })();
     </script>
     
-    <!-- 2. Import Map：锁定 ESM 来源，移除冲突后缀 -->
+    <!-- 2. Import Map：清理冗余，移除冲突的斜杠路径映射 -->
     <script type="importmap">
 {
   "imports": {
@@ -47,8 +53,8 @@
 }
 </script>
 
-    <!-- 3. Tailwind & Fonts：添加 crossorigin 解决跨域 -->
-    <script src="https://cdn.tailwindcss.com" crossorigin></script>
+    <!-- 3. Tailwind & 字体：移除 crossorigin 解决部分环境下的预检失败 -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -84,19 +90,21 @@
         right: 20px;
         background: #ef4444;
         color: white;
-        padding: 15px;
-        border-radius: 10px;
-        font-size: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 11px;
         z-index: 9999;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        pointer-events: none;
+        opacity: 0.95;
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:15px;background:#0a0f2b;">
-        <div style="width:50px;height:50px;border:3px solid rgba(59, 130, 246, 0.2);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;"></div>
-        <div style="color:#64748b;font-size:14px;letter-spacing:1px;font-weight:500;">SOMNOAI 安全启动中...</div>
+        <div style="width:48px;height:48px;border:3px solid rgba(59, 130, 246, 0.2);border-top-color:#3b82f6;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <div style="color:#475569;font-size:13px;font-weight:500;">SOMNOAI 正在加载模块...</div>
       </div>
       <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     </div>
