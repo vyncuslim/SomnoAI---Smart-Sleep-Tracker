@@ -1,0 +1,7 @@
+{
+  "name": "SomnoAI - Smart Sleep Tracker",
+  "description": "An AI-powered sleep quality dashboard with Google Fit integration, sleep stage visualization, heart rate monitoring, and a personalized AI health assistant for better rest.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
