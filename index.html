@@ -4,24 +4,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SomnoAI</title>
-    <!-- 1. 最先执行：注入 process 模拟环境 -->
+    <title>SomnoAI - 智能睡眠监测</title>
+    
+    <!-- 1. 优先级最高：注入模拟环境 -->
     <script>
       (function() {
         window.process = { 
           env: { API_KEY: "" },
-          cwd: function() { return "/"; }
+          cwd: function() { return "/"; },
+          nextTick: function(fn) { setTimeout(fn, 0); }
         };
-        // 捕获可能导致白屏的模块加载错误
+        window.global = window;
+        
+        // 监控脚本加载失败
         window.addEventListener('error', function(e) {
-          if (e.message.includes('import')) {
-            document.body.innerHTML = '<div style="color:white;padding:20px;background:red;">模块加载失败: ' + e.message + '</div>';
+          console.error('加载异常:', e);
+          if (e.target && (e.target.src || e.target.href)) {
+            const msg = '资源加载失败: ' + (e.target.src || e.target.href);
+            const errorOverlay = document.getElementById('error-overlay');
+            if (errorOverlay) {
+              errorOverlay.style.display = 'block';
+              errorOverlay.innerText = msg;
+            }
           }
-        });
+        }, true);
       })();
     </script>
     
-    <!-- 2. Import Map：精简并锁定版本，确保 react-dom/client 正常工作 -->
+    <!-- 2. Import Map：锁定 ESM 来源，移除冲突后缀 -->
     <script type="importmap">
 {
   "imports": {
@@ -37,10 +47,12 @@
 }
 </script>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 3. Tailwind & Fonts：添加 crossorigin 解决跨域 -->
+    <script src="https://cdn.tailwindcss.com" crossorigin></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
       body {
         font-family: 'Plus+Jakarta+Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -64,18 +76,33 @@
         background: rgba(255, 255, 255, 0.2);
         border-radius: 10px;
       }
+      #error-overlay {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 12px;
+        z-index: 9999;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      }
     </style>
   </head>
   <body>
     <div id="root">
-      <!-- 初始加载状态，防止脚本执行前的短暂空白 -->
-      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:10px;">
-        <div style="width:40px;height:40px;border:4px solid #3b82f6;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
-        <div style="color:#64748b;font-size:12px;">SomnoAI 正在启动...</div>
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:15px;background:#0a0f2b;">
+        <div style="width:50px;height:50px;border:3px solid rgba(59, 130, 246, 0.2);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;"></div>
+        <div style="color:#64748b;font-size:14px;letter-spacing:1px;font-weight:500;">SOMNOAI 安全启动中...</div>
       </div>
       <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     </div>
-    <!-- 3. 最后加载模块代码 -->
+    <div id="error-overlay"></div>
+    
+    <!-- 4. 模块入口 -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
