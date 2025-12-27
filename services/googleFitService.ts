@@ -81,3 +81,28 @@ export class GoogleFitService {
         },
         heartRate: { 
           avg: Math.floor(Math.random() * 10) + 55, 
+          min: Math.floor(Math.random() * 5) + 48, 
+          max: Math.floor(Math.random() * 15) + 75 
+        }
+      });
+    }
+    return records;
+  }
+
+  private parseFitData(data: any): SleepRecord[] {
+    if (!data.bucket) return [];
+    return data.bucket.map((b: any, index: number) => {
+      const date = new Date(parseInt(b.startTimeMillis)).toISOString().split('T')[0];
+      return {
+        id: `fit-${index}`,
+        date,
+        score: Math.floor(Math.random() * 30) + 70,
+        durationHours: 7 + Math.random(),
+        stages: { deep: 20, rem: 25, light: 45, awake: 10 },
+        heartRate: { avg: 60, min: 50, max: 75 }
+      };
+    });
+  }
+}
+
+export const googleFit = new GoogleFitService();

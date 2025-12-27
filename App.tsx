@@ -22,14 +22,12 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [trendTimeframe, setTrendTimeframe] = useState<'week' | 'month' | 'year'>('week');
   
-  // 模拟状态
   const [user, setUser] = useState<UserProfile | null>(null);
   const [alarms, setAlarms] = useState<Alarm[]>([
     { id: '1', time: '07:30', days: ['一', '二', '三', '四', '五'], enabled: true, smartWake: true },
     { id: '2', time: '09:00', days: ['六', '日'], enabled: false, smartWake: false }
   ]);
 
-  // 聊天状态
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: 'model', text: '你好！我是你的 SomnoAI 睡眠教练。我注意到你最近同步了健康数据，需要我为你分析一下昨晚的睡眠质量吗？', timestamp: new Date() }
   ]);
@@ -71,8 +69,10 @@ const App: React.FC = () => {
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setIsTyping(true);
+    
     const history = chatMessages.map(m => ({ role: m.role, parts: [{ text: m.text }] }));
     history.push({ role: 'user', parts: [{ text: chatInput }] });
+    
     const advice = await getSleepAdvice(history, sleepRecords);
     setChatMessages(prev => [...prev, { role: 'model', text: advice, timestamp: new Date() }]);
     setIsTyping(false);
@@ -80,20 +80,24 @@ const App: React.FC = () => {
 
   const syncFit = async () => {
     setIsSyncing(true);
-    const success = await googleFit.authorize();
-    if (success) {
-      const data = await googleFit.fetchSleepData(30);
-      if (data.length > 0) {
-        setSleepRecords(data);
-        setSelectedRecord(data[data.length - 1]);
+    try {
+      const success = await googleFit.authorize();
+      if (success) {
+        const data = await googleFit.fetchSleepData(30);
+        if (data && data.length > 0) {
+          setSleepRecords(data);
+          setSelectedRecord(data[data.length - 1]);
+        }
+        setIsGoogleFitConnected(true);
+        setUser(prev => prev ? {...prev, fitConnected: true} : null);
       }
-      setIsGoogleFitConnected(true);
-      setUser(prev => prev ? {...prev, fitConnected: true} : null);
+    } catch (err) {
+      console.error("同步失败:", err);
+    } finally {
+      setIsSyncing(false);
     }
-    setIsSyncing(false);
   };
 
-  // 认证视图
   if (activeView === 'auth') {
     return (
       <div className="min-h-screen bg-[#0a0f2b] flex flex-col items-center justify-center px-8 text-center">
@@ -102,34 +106,22 @@ const App: React.FC = () => {
         </div>
         <h1 className="text-3xl font-bold mb-2">欢迎来到 SomnoAI</h1>
         <p className="text-gray-400 text-sm mb-12">利用 AI 技术开启您的优质睡眠之旅</p>
-        
         <div className="w-full space-y-4">
-          <button 
-            onClick={handleLogin}
-            className="w-full h-14 bg-white text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-all"
-          >
+          <button onClick={handleLogin} className="w-full h-14 bg-white text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-all">
             <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" className="w-6 h-6" alt="Google" />
             使用 Google 登录
           </button>
-          <button 
-            onClick={handleLogin}
-            className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all"
-          >
+          <button onClick={handleLogin} className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all">
             <Mail size={20} />
             使用邮箱登录
           </button>
         </div>
-        
-        <p className="mt-8 text-[11px] text-gray-500 px-6">
-          登录即表示您同意我们的 <span className="text-blue-400">服务条款</span> 和 <span className="text-blue-400">隐私政策</span>
-        </p>
       </div>
     );
   }
 
   return (
     <Layout activeView={activeView} onViewChange={setActiveView}>
-      
       {activeView === 'dashboard' && (
         <div className="space-y-6 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {!isGoogleFitConnected ? (
@@ -143,11 +135,7 @@ const App: React.FC = () => {
                   <p className="text-[10px] text-gray-400">同步真实的健康数据</p>
                 </div>
               </div>
-              <button 
-                disabled={isSyncing}
-                onClick={syncFit}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full transition-all flex items-center gap-2"
-              >
+              <button disabled={isSyncing} onClick={syncFit} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full transition-all flex items-center gap-2">
                 {isSyncing ? <RefreshCw size={12} className="animate-spin" /> : '立即连接'}
               </button>
             </div>
@@ -221,11 +209,7 @@ const App: React.FC = () => {
             <h2 className="text-xl font-bold">睡眠趋势</h2>
             <div className="flex bg-white/5 rounded-full p-1 border border-white/5">
               {(['week', 'month', 'year'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTrendTimeframe(t)}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${trendTimeframe === t ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}
-                >
+                <button key={t} onClick={() => setTrendTimeframe(t)} className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${trendTimeframe === t ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>
                   {t === 'week' ? '周' : t === 'month' ? '月' : '年'}
                 </button>
               ))}
@@ -257,41 +241,24 @@ const App: React.FC = () => {
         <div className="space-y-6 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">智能闹钟</h2>
-            <button className="p-2 bg-blue-600 rounded-full shadow-lg shadow-blue-500/20">
+            <button className="p-2 bg-blue-600 rounded-full">
               <Plus size={20} />
             </button>
           </div>
           <div className="space-y-4">
             {alarms.map(alarm => (
-              <div key={alarm.id} className={`glass-card rounded-3xl p-6 flex flex-col gap-4 border-l-4 transition-all ${alarm.enabled ? 'border-l-blue-500 opacity-100' : 'border-l-gray-600 opacity-60'}`}>
+              <div key={alarm.id} className={`glass-card rounded-3xl p-6 flex flex-col gap-4 border-l-4 transition-all ${alarm.enabled ? 'border-l-blue-500' : 'border-l-gray-600 opacity-60'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-3xl font-bold tracking-tight">{alarm.time}</span>
-                    <span className="text-[10px] text-gray-400 font-bold uppercase mt-1">
-                      {alarm.days.join(' ')}
-                    </span>
+                    <span className="text-3xl font-bold">{alarm.time}</span>
+                    <span className="text-[10px] text-gray-400 uppercase mt-1">{alarm.days.join(' ')}</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setAlarms(prev => prev.map(a => a.id === alarm.id ? {...a, enabled: !a.enabled} : a))} className={`w-12 h-6 rounded-full relative transition-colors ${alarm.enabled ? 'bg-blue-600' : 'bg-gray-700'}`}>
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alarm.enabled ? 'left-7' : 'left-1'}`} />
-                    </button>
-                    <button className="text-gray-500 hover:text-red-400">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+                  <button onClick={() => setAlarms(prev => prev.map(a => a.id === alarm.id ? {...a, enabled: !a.enabled} : a))} className={`w-12 h-6 rounded-full relative transition-colors ${alarm.enabled ? 'bg-blue-600' : 'bg-gray-700'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alarm.enabled ? 'left-7' : 'left-1'}`} />
+                  </button>
                 </div>
-                {alarm.smartWake && (
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-cyan-400 bg-cyan-400/10 px-3 py-1.5 rounded-full w-fit">
-                    <Zap size={10} /> 智能唤醒已开启
-                  </div>
-                )}
               </div>
             ))}
-          </div>
-          <div className="p-5 glass-card rounded-3xl bg-blue-500/5 border-blue-500/20">
-            <p className="text-xs text-blue-300 leading-relaxed italic">
-              "智能唤醒功能会在您设定的时间前 30 分钟内，当您处于浅睡阶段时温柔地唤醒您。"
-            </p>
           </div>
         </div>
       )}
@@ -300,14 +267,13 @@ const App: React.FC = () => {
         <div className="flex flex-col h-[calc(100vh-14rem)] animate-in fade-in duration-300">
           <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
             {chatMessages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] p-4 rounded-3xl text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'glass-card text-gray-200 rounded-tl-none border border-white/10'}`}>
-                  {msg.role === 'model' && <div className="flex items-center gap-2 mb-2"><Sparkles size={10} className="text-cyan-400" /><span className="text-[10px] font-bold uppercase text-cyan-400">SomnoAI 教练</span></div>}
                   {msg.text}
                 </div>
               </div>
             ))}
-            {isTyping && <div className="flex justify-start"><div className="glass-card p-4 rounded-3xl rounded-tl-none flex gap-1"><div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" /><div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}} /><div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}} /></div></div>}
+            {isTyping && <div className="flex justify-start"><div className="glass-card p-4 rounded-3xl flex gap-1"><div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" /></div></div>}
             <div ref={chatEndRef} />
           </div>
           <div className="mt-4 glass-card p-2 rounded-3xl flex items-center border border-white/10 shadow-xl">
@@ -320,20 +286,11 @@ const App: React.FC = () => {
       {activeView === 'profile' && user && (
         <div className="space-y-6 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col items-center py-6">
-            <div className="relative">
-              <img src={user.avatar} alt="Profile" className="w-24 h-24 rounded-full border-4 border-blue-500/20 shadow-xl" />
-              <div className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full border-4 border-[#0a0f2b]"><Plus size={14} /></div>
-            </div>
+            <img src={user.avatar} alt="Profile" className="w-24 h-24 rounded-full border-4 border-blue-500/20 shadow-xl" />
             <h2 className="mt-4 text-xl font-bold">{user.name}</h2>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">{user.isPremium ? '尊享会员' : '免费版'}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card rounded-2xl p-4 flex flex-col items-center gap-2"><span className="text-2xl font-bold">7.2h</span><span className="text-[10px] text-gray-500 font-bold">平均时长</span></div>
-            <div className="glass-card rounded-2xl p-4 flex flex-col items-center gap-2"><span className="text-2xl font-bold">82</span><span className="text-[10px] text-gray-500 font-bold">平均评分</span></div>
+            <p className="text-xs text-gray-500 uppercase tracking-widest">{user.isPremium ? '尊享会员' : '免费版'}</p>
           </div>
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/5">
-            <div className="p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer"><span className="text-sm font-medium">个人信息</span><ChevronRight size={18} className="text-gray-600" /></div>
-            <div className="p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer"><span className="text-sm font-medium">第三方连接</span><div className="flex gap-2 items-center">{user.fitConnected && <img src="https://www.gstatic.com/images/branding/product/2x/fit_32dp.png" className="w-4 h-4" />}<ChevronRight size={18} className="text-gray-600" /></div></div>
             <div className="p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer" onClick={() => setActiveView('auth')}><span className="text-sm font-medium text-red-400">退出登录</span></div>
           </div>
         </div>
