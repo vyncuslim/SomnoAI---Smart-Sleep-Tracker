@@ -5,18 +5,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SomnoAI</title>
-    <!-- 垫片：防止 process.env 未定义导致的应用崩溃 -->
+    <!-- 1. 最先执行：注入 process 模拟环境 -->
     <script>
-      window.process = {
-        env: {
-          API_KEY: "" // 这里的实际值将由环境注入，此处防止代码报错
-        }
-      };
-      // 全局错误捕获，方便调试
-      window.onerror = function(message, source, lineno, colno, error) {
-        console.error("SomnoAI 运行时错误: ", message, " 来源: ", source, " 行: ", lineno);
-      };
+      (function() {
+        window.process = { 
+          env: { API_KEY: "" },
+          cwd: function() { return "/"; }
+        };
+        // 捕获可能导致白屏的模块加载错误
+        window.addEventListener('error', function(e) {
+          if (e.message.includes('import')) {
+            document.body.innerHTML = '<div style="color:white;padding:20px;background:red;">模块加载失败: ' + e.message + '</div>';
+          }
+        });
+      })();
     </script>
+    
+    <!-- 2. Import Map：精简并锁定版本，确保 react-dom/client 正常工作 -->
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "recharts": "https://esm.sh/recharts@2.12.7",
+    "lucide-react": "https://esm.sh/lucide-react@0.400.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,23 +65,17 @@
         border-radius: 10px;
       }
     </style>
-    <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
-    "recharts": "https://esm.sh/recharts@2.12.7",
-    "lucide-react": "https://esm.sh/lucide-react@0.400.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
-  }
-}
-</script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- 初始加载状态，防止脚本执行前的短暂空白 -->
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:10px;">
+        <div style="width:40px;height:40px;border:4px solid #3b82f6;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <div style="color:#64748b;font-size:12px;">SomnoAI 正在启动...</div>
+      </div>
+      <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    </div>
+    <!-- 3. 最后加载模块代码 -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
