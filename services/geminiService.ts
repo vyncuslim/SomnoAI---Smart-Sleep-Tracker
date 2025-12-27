@@ -2,24 +2,18 @@
 import { GoogleGenAI } from "@google/genai";
 import { SleepRecord } from "../types";
 
-// 防御性获取 API_KEY，防止 process.env 未定义时的奔溃
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || '';
-  } catch (e) {
-    return '';
-  }
-};
-
-const apiKey = getApiKey();
-
+/**
+ * 获取睡眠建议
+ */
 export const getSleepAdvice = async (history: { role: 'user' | 'model', parts: { text: string }[] }[], currentData: SleepRecord[]) => {
-  if (!apiKey) {
+  /* Using process.env.API_KEY directly as required by guidelines */
+  if (!process.env.API_KEY) {
     return "AI 教练目前未配置 API Key，无法提供建议。";
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    /* Always initialize with { apiKey: process.env.API_KEY } directly before use */
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const dataSummary = currentData.map(d => 
       `日期: ${d.date}, 评分: ${d.score}, 时长: ${d.durationHours}h, 深睡: ${d.stages.deep}%, REM: ${d.stages.rem}%`
     ).join('\n');
@@ -42,6 +36,7 @@ export const getSleepAdvice = async (history: { role: 'user' | 'model', parts: {
       }
     });
 
+    /* Correctly extracting text using the .text property as per guidelines */
     return response.text || "抱歉，我现在无法分析您的数据。";
   } catch (error) {
     console.error("Gemini API error:", error);
@@ -49,11 +44,15 @@ export const getSleepAdvice = async (history: { role: 'user' | 'model', parts: {
   }
 };
 
+/**
+ * 获取每日洞察
+ */
 export const getQuickInsight = async (data: SleepRecord) => {
-  if (!apiKey) return "配置 API Key 以获取每日洞察。";
+  if (!process.env.API_KEY) return "配置 API Key 以获取每日洞察。";
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    /* Initializing client inside the function scope to ensure the latest API key is used */
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `基于 ${data.score} 的睡眠评分和 ${data.durationHours} 小时的时长，提供一句简短的中文睡眠洞察。`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -62,6 +61,7 @@ export const getQuickInsight = async (data: SleepRecord) => {
         systemInstruction: "你是一个简洁的睡眠助手。只输出一句中文建议，不需要多余的话。",
       }
     });
+    /* Accessing the .text property of GenerateContentResponse */
     return response.text || "您的睡眠模式非常稳定。";
   } catch {
     return "保持规律的作息是提高睡眠质量的关键。";
